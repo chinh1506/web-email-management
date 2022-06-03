@@ -1,6 +1,6 @@
 package com.example.webemailmanagement.controller;
 
-import com.example.webemailmanagement.model.Message;
+import com.example.webemailmanagement.model.EmailMessage;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MailRestController {
 
     @GetMapping("/messages")
-    public Message getAllMail(){
+    public EmailMessage getAllMail(){
         return null;
     }
 }
