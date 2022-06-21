@@ -13,53 +13,77 @@ import javax.mail.*;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Properties;
+import java.util.*;
 
 @Service
 public class DownloadMailServiceImpl implements DowloadMailService {
-    private String protocol;
-    private String host;
-    private String port;
-    private String userName;
-    private String password;
 
+    private Properties getServerProperties(String protocol, String host, String port) {
+        Properties properties = new Properties();
+        // server setting
+        properties.put(String.format("mail.%s.host", protocol), host);
+        properties.put(String.format("mail.%s.port", protocol), port);
 
-    public void setPropertiesBuilder(String protocol, String host, String port, String userName, String password) {
-        this.protocol = protocol;
-        this.host = host;
-        this.port = port;
-        this.userName = userName;
-        this.password = password;
+        // SSL setting
+        properties.setProperty(String.format("mail.%s.socketFactory.class", protocol),
+                "javax.net.ssl.SSLSocketFactory");
+        properties.setProperty(String.format("mail.%s.socketFactory.fallback", protocol), "false");
+        properties.setProperty(String.format("mail.%s.socketFactory.port", protocol), String.valueOf(port));
+
+        return properties;
     }
-
-    public JavaMailSender getMailSender(){
-        JavaMailSenderImpl mailSender= new JavaMailSenderImpl();
-        mailSender.setJavaMailProperties(getServerProperties());
-        mailSender.setHost(host);
-        mailSender.setPort(Integer.parseInt(port));
-        mailSender.setUsername(userName);
-        mailSender.setPassword(password);
-        return mailSender;
-    }
-    /**
-     * Downloads new messages and fetches details for each message.
-     */
-    public Message[] downloadEmails(String folder) {
-        Properties properties = getServerProperties();
+    public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password) {
+        Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
-
-        Message[] messages = new Message[0];
+        List<EmailMessage> emailMessages= new ArrayList<>();
         try {
             // connects to the message store
             Store store = session.getStore(protocol);
             store.connect(userName, password);
+
             // opens the inbox folder
-            Folder folderInbox = store.getFolder(folder);
+            Folder folderInbox = store.getFolder("INBOX");
             folderInbox.open(Folder.READ_ONLY);
+
             // fetches new messages from server
-            messages = folderInbox.getMessages();
+            Message[] messages = folderInbox.getMessages();
+            System.out.println("Total Message" + messages.length);
+            for (int i = messages.length - 1; i > 0; i--) {
+                Message msg = messages[i];
+                Address[] fromAddress = msg.getFrom();
+                String from = fromAddress[0].toString();
+                String subject = msg.getSubject();
+                String toList = parseAddresses(msg.getRecipients(Message.RecipientType.TO));
+                String ccList = parseAddresses(msg.getRecipients(Message.RecipientType.CC));
+                Date sentDate = msg.getSentDate();
+
+                String contentType = msg.getContentType();
+                String messageContent = contentType;
+                try {
+                    if (msg.isMimeType("text/plain")) {
+                        messageContent = msg.getContent().toString();
+                    } else if (msg.isMimeType("multipart/*")) {
+                        MimeMultipart mimeMultipart = (MimeMultipart) msg.getContent();
+                        messageContent = getTextFromMimeMultipart(mimeMultipart);
+                    }
+                    else if(msg.isMimeType("text/html")) {
+                        messageContent = msg.getContent().toString();
+                    }
+
+                } catch (Exception e) {
+                    messageContent = "[Error downloading content]";
+                    e.printStackTrace();
+                }
+                EmailMessage message= new EmailMessage();
+                message.setContent(messageContent);
+                message.setTo(toList);
+                message.setSubject(subject);
+                message.setSendDate(sentDate);
+                message.setCc(ccList);
+
+                emailMessages.add(message);
+            }
+
             // disconnect
             folderInbox.close(false);
             store.close();
@@ -70,31 +94,29 @@ public class DownloadMailServiceImpl implements DowloadMailService {
             System.out.println("Could not connect to the message store");
             ex.printStackTrace();
         }
-        return messages;
+        return emailMessages;
     }
 
-    public void sendMail(EmailMessage emailMessage) {
-        SimpleMailMessage message= new SimpleMailMessage();
-        message.setBcc((String[])emailMessage.getBcc().toArray());
-        message.setCc((String[])emailMessage.getCc().toArray());
-        message.setFrom(userName);
-        message.setTo((String[])emailMessage.getTo().toArray());
-        message.setSentDate(new Date());
-    }
+//    public JavaMailSender getMailSender(String host, int port, String userName, String password) {
+//        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+//        mailSender.setJavaMailProperties(getServerProperties());
+//        mailSender.setHost(host);
+//        mailSender.setPort(port);
+//        mailSender.setUsername(userName);
+//        mailSender.setPassword(password);
+//        return mailSender;
+//    }
 
-    public Properties getServerProperties() {
-        Properties properties = new Properties();
 
-        // server setting
-        properties.put(String.format("mail.%s.host", protocol), host);
-        properties.put(String.format("mail.%s.port", protocol), port);
+//    public void sendMail(EmailMessage emailMessage, String userNameFrom) {
+//        SimpleMailMessage message = new SimpleMailMessage();
+//        message.setBcc(();
+//        message.setCc();
+//        message.setFrom(userNameFrom);
+//        message.setTo((String[]) emailMessage.getTo().toArray());
+//        message.setSentDate(new Date());
+//    }
 
-        // SSL setting
-        properties.setProperty(String.format("mail.%s.socketFactory.class", protocol), "javax.net.ssl.SSLSocketFactory");
-        properties.setProperty(String.format("mail.%s.socketFactory.fallback", protocol), "false");
-        properties.setProperty(String.format("mail.%s.socketFactory.port", protocol), String.valueOf(port));
-        return properties;
-    }
 
     /**
      * Returns a list of addresses in String format separated by comma

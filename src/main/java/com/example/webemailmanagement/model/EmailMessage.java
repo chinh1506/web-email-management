@@ -11,11 +11,11 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmailMessage {
-    private ArrayList<String> to;
-    private ArrayList<String> cc;
-    private ArrayList<String> bcc;
+    private String to;
+    private String cc;
+    private String bcc;
     private String subject;
-    private Object content;
+    private String content;
     private Object attachment;
     private String replyTo;
     private Date sendDate;
