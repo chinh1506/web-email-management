@@ -54,7 +54,8 @@ public class DownloadMailServiceImpl implements DowloadMailService {
             System.err.println("Error in deleting email.");
         }
     }
-    public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password) {
+    @Override
+    public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password,String folder) {
         Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
         List<EmailMessage> emailMessages = new ArrayList<>();
@@ -64,13 +65,14 @@ public class DownloadMailServiceImpl implements DowloadMailService {
             store.connect(userName, password);
 
             // opens the inbox folder
-            Folder folderInbox = store.getFolder("INBOX");
+            Folder folderInbox = store.getFolder(folder);
             folderInbox.open(Folder.READ_ONLY);
 
             // fetches new messages from server
             Message[] messages = folderInbox.getMessages();
             System.out.println("Total Message" + messages.length);
-            for (int i = messages.length - 1; i > messages.length - 10; i--) {
+            for (int i = messages.length - 1; i > 0 ; i--) {
+
                 Message msg = messages[i];
                 Address[] fromAddress = msg.getFrom();
                 String from = fromAddress[0].toString();
@@ -107,8 +109,8 @@ public class DownloadMailServiceImpl implements DowloadMailService {
                 message.setCc(ccList);
                 message.setFrom(from);
                 message.setFlags(flags);
+                message.setId(i);
                 emailMessages.add(message);
-
             }
 
             // disconnect

@@ -13,9 +13,7 @@ import org.springframework.integration.mail.MailReceiver;
 import org.springframework.integration.mapping.HeaderMapper;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import javax.mail.Message;
@@ -35,17 +33,15 @@ public class MailRestController {
     private DowloadMailService mailService;
 
     @GetMapping("/mails")
-    public List<EmailMessage>  getAllMail() throws MessagingException {
+    public List<EmailMessage> getAllMail(@RequestParam String folder) throws MessagingException {
         List<EmailMessage> mails = mailService.downloadEmails("imap", "outlook.office365.com", "993",
-                "19525091.chinh@student.iuh.edu.vn", "chinh123@");
-        System.out.println(mails.get(0));
+                "19525091.chinh@student.iuh.edu.vn", "chinh123@",folder);
         return mails;
     }
-    @GetMapping("/multi")
-    public String getMultiparts(HttpServletResponse response) throws MessagingException, IOException {
 
-        String s="";
-
-        return s;
+    @GetMapping("/delete/{id}")
+    public void deleteMail(@PathVariable int id) throws MessagingException, IOException {
+        mailService.deleteEmail("imap", "outlook.office365.com", "993",
+                "19525091.chinh@student.iuh.edu.vn", "chinh123@", id);
     }
 }

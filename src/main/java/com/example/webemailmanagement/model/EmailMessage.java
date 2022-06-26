@@ -12,6 +12,7 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmailMessage {
+    private int id;
     private String to;
     private String from;
     private String cc;
