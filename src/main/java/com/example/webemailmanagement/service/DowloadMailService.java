@@ -10,4 +10,5 @@ import java.util.Properties;
 public interface DowloadMailService {
     public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password);
     public String getTextFromMimeMultipart(MimeMultipart mimeMultipart);
+    public void deleteEmail(String protocol, String host, String port, String userName, String password,int i);
 }

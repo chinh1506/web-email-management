@@ -2,17 +2,14 @@ package com.example.webemailmanagement.service.serviceImpl;
 
 import com.example.webemailmanagement.model.EmailMessage;
 import com.example.webemailmanagement.service.DowloadMailService;
-import com.sun.mail.smtp.SMTPSaslAuthenticator;
-import org.jsoup.Jsoup;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
 
 import javax.mail.*;
-import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
-import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 
 @Service
@@ -32,10 +29,35 @@ public class DownloadMailServiceImpl implements DowloadMailService {
 
         return properties;
     }
+    private Session getSession(String protocol, String host, String port, String userName, String password){
+        Properties properties = getServerProperties(protocol, host, port);
+        Session session = Session.getDefaultInstance(properties);
+        return session;
+    }
+    @Override
+    public void deleteEmail(String protocol, String host, String port, String userName, String password,int i){
+        Properties properties = getServerProperties(protocol, host, port);
+        Session session = Session.getDefaultInstance(properties);
+        try {
+            Store store = session.getStore(protocol);
+            store.connect(host, userName, password);
+            Folder folder = store.getFolder("INBOX");
+            folder.open(Folder.READ_WRITE);
+            Message[] messages = folder.getMessages();
+            messages[i].setFlag(Flags.Flag.DELETED, true);
+            folder.close(true);
+            store.close();
+
+            System.out.println("Email deleted successfully.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error in deleting email.");
+        }
+    }
     public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password) {
         Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
-        List<EmailMessage> emailMessages= new ArrayList<>();
+        List<EmailMessage> emailMessages = new ArrayList<>();
         try {
             // connects to the message store
             Store store = session.getStore(protocol);
@@ -48,7 +70,7 @@ public class DownloadMailServiceImpl implements DowloadMailService {
             // fetches new messages from server
             Message[] messages = folderInbox.getMessages();
             System.out.println("Total Message" + messages.length);
-            for (int i = messages.length - 1; i > 0; i--) {
+            for (int i = messages.length - 1; i > messages.length - 10; i--) {
                 Message msg = messages[i];
                 Address[] fromAddress = msg.getFrom();
                 String from = fromAddress[0].toString();
@@ -56,8 +78,10 @@ public class DownloadMailServiceImpl implements DowloadMailService {
                 String toList = parseAddresses(msg.getRecipients(Message.RecipientType.TO));
                 String ccList = parseAddresses(msg.getRecipients(Message.RecipientType.CC));
                 Date sentDate = msg.getSentDate();
-
+                String flags = msg.getFlags().toString();
                 String contentType = msg.getContentType();
+                System.out.println(contentType);
+
                 String messageContent = contentType;
                 try {
                     if (msg.isMimeType("text/plain")) {
@@ -65,23 +89,26 @@ public class DownloadMailServiceImpl implements DowloadMailService {
                     } else if (msg.isMimeType("multipart/*")) {
                         MimeMultipart mimeMultipart = (MimeMultipart) msg.getContent();
                         messageContent = getTextFromMimeMultipart(mimeMultipart);
-                    }
-                    else if(msg.isMimeType("text/html")) {
+//                        messageContent= readAttackment(mimeMultipart);
+                    } else if (msg.isMimeType("text/html")) {
                         messageContent = msg.getContent().toString();
                     }
+//                    messageContent= msg.getContent().toString();
 
                 } catch (Exception e) {
                     messageContent = "[Error downloading content]";
                     e.printStackTrace();
                 }
-                EmailMessage message= new EmailMessage();
+                EmailMessage message = new EmailMessage();
                 message.setContent(messageContent);
                 message.setTo(toList);
                 message.setSubject(subject);
                 message.setSendDate(sentDate);
                 message.setCc(ccList);
-
+                message.setFrom(from);
+                message.setFlags(flags);
                 emailMessages.add(message);
+
             }
 
             // disconnect
@@ -96,6 +123,8 @@ public class DownloadMailServiceImpl implements DowloadMailService {
         }
         return emailMessages;
     }
+
+
 
 //    public JavaMailSender getMailSender(String host, int port, String userName, String password) {
 //        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
@@ -139,27 +168,52 @@ public class DownloadMailServiceImpl implements DowloadMailService {
         return listAddress;
     }
 
+    private String readAttackment(MimeMultipart multipart){
+        //Iterate multiparts
+        String result="";
+        try {
+            for(int k = 0; k < multipart.getCount(); k++){
+                BodyPart bodyPart = multipart.getBodyPart(k);
+                InputStream stream =
+                        (InputStream) bodyPart.getInputStream();
+                BufferedReader bufferedReader =
+                        new BufferedReader(new InputStreamReader(stream));
+
+                while (bufferedReader.ready()) {
+                    result+= bufferedReader.readLine();
+                    System.out.println(result);
+                }
+                System.out.println();
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return result;
+    }
     public String getTextFromMimeMultipart(MimeMultipart mimeMultipart) {
         String result = "";
-        int count = 0;
+
         try {
-            count = mimeMultipart.getCount();
+            int count = mimeMultipart.getCount();
             for (int i = 0; i < count; i++) {
-                BodyPart bodyPart = mimeMultipart.getBodyPart(i);
+//                BodyPart bodyPart = mimeMultipart.getBodyPart(i);
+                MimeBodyPart bodyPart = (MimeBodyPart) mimeMultipart.getBodyPart(i);
                 if (bodyPart.isMimeType("text/plain")) {
                     result = result + "\n" + bodyPart.getContent();
                     break; // without break same text appears twice in my tests
                 } else if (bodyPart.isMimeType("text/html")) {
                     String html = (String) bodyPart.getContent();
-                    result = result + "\n" + Jsoup.parse(html).text();
+//                    result = result + "\n" + org.jsoup.Jsoup.parse(html).text();
+                    result = result + html;
                 } else if (bodyPart.getContent() instanceof MimeMultipart) {
                     result = result + getTextFromMimeMultipart((MimeMultipart) bodyPart.getContent());
                 }
             }
-            return result;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
+        return result;
     }
+
 
 }
