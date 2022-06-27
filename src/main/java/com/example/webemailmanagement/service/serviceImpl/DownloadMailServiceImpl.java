@@ -29,13 +29,15 @@ public class DownloadMailServiceImpl implements DowloadMailService {
 
         return properties;
     }
-    private Session getSession(String protocol, String host, String port, String userName, String password){
+
+    private Session getSession(String protocol, String host, String port, String userName, String password) {
         Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
         return session;
     }
+
     @Override
-    public void deleteEmail(String protocol, String host, String port, String userName, String password,int i){
+    public void deleteEmail(String protocol, String host, String port, String userName, String password, int i) {
         Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
         try {
@@ -54,8 +56,9 @@ public class DownloadMailServiceImpl implements DowloadMailService {
             System.err.println("Error in deleting email.");
         }
     }
+
     @Override
-    public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password,String folder) {
+    public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password, String folder) {
         Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
         List<EmailMessage> emailMessages = new ArrayList<>();
@@ -71,42 +74,17 @@ public class DownloadMailServiceImpl implements DowloadMailService {
             // fetches new messages from server
             Message[] messages = folderInbox.getMessages();
             System.out.println("Total Message" + messages.length);
-            for (int i = messages.length - 1; i > 0 ; i--) {
-
+            for (int i = messages.length - 1; i >= 0; i--) {
                 Message msg = messages[i];
                 Address[] fromAddress = msg.getFrom();
                 String from = fromAddress[0].toString();
                 String subject = msg.getSubject();
-                String toList = parseAddresses(msg.getRecipients(Message.RecipientType.TO));
-                String ccList = parseAddresses(msg.getRecipients(Message.RecipientType.CC));
                 Date sentDate = msg.getSentDate();
                 String flags = msg.getFlags().toString();
-                String contentType = msg.getContentType();
-                System.out.println(contentType);
 
-                String messageContent = contentType;
-                try {
-                    if (msg.isMimeType("text/plain")) {
-                        messageContent = msg.getContent().toString();
-                    } else if (msg.isMimeType("multipart/*")) {
-                        MimeMultipart mimeMultipart = (MimeMultipart) msg.getContent();
-                        messageContent = getTextFromMimeMultipart(mimeMultipart);
-//                        messageContent= readAttackment(mimeMultipart);
-                    } else if (msg.isMimeType("text/html")) {
-                        messageContent = msg.getContent().toString();
-                    }
-//                    messageContent= msg.getContent().toString();
-
-                } catch (Exception e) {
-                    messageContent = "[Error downloading content]";
-                    e.printStackTrace();
-                }
                 EmailMessage message = new EmailMessage();
-                message.setContent(messageContent);
-                message.setTo(toList);
                 message.setSubject(subject);
                 message.setSendDate(sentDate);
-                message.setCc(ccList);
                 message.setFrom(from);
                 message.setFlags(flags);
                 message.setId(i);
@@ -125,7 +103,67 @@ public class DownloadMailServiceImpl implements DowloadMailService {
         }
         return emailMessages;
     }
+    @Override
+    public EmailMessage readEmailById(String protocol, String host, String port, String userName, String password, String folder, int id) {
+        Properties properties = getServerProperties(protocol, host, port);
+        Session session = Session.getDefaultInstance(properties);
+        EmailMessage message = null;
+        try {
+            // connects to the message store
+            Store store = session.getStore(protocol);
+            store.connect(userName, password);
+            // opens the inbox folder
+            Folder folderInbox = store.getFolder(folder);
+            folderInbox.open(Folder.READ_ONLY);
+            // fetches new messages from server
+            Message[] messages = folderInbox.getMessages();
+            System.out.println("Total Message" + messages.length);
+            Message msg = messages[id];
+            Address[] fromAddress = msg.getFrom();
+            String from = fromAddress[0].toString();
+            String subject = msg.getSubject();
+            String toList = parseAddresses(msg.getRecipients(Message.RecipientType.TO));
+            String ccList = parseAddresses(msg.getRecipients(Message.RecipientType.CC));
+            Date sentDate = msg.getSentDate();
+            String flags = msg.getFlags().toString();
+            String contentType = msg.getContentType();
+            System.out.println(contentType);
 
+            String messageContent = contentType;
+            try {
+                if (msg.isMimeType("text/plain")) {
+                    messageContent = msg.getContent().toString();
+                } else if (msg.isMimeType("multipart/*")) {
+                    MimeMultipart mimeMultipart = (MimeMultipart) msg.getContent();
+                    messageContent = getTextFromMimeMultipart(mimeMultipart);
+                } else if (msg.isMimeType("text/html")) {
+                    messageContent = msg.getContent().toString();
+                }
+            } catch (Exception e) {
+                messageContent = "[Error downloading content]";
+                e.printStackTrace();
+            }
+            message = new EmailMessage();
+            message.setContent(messageContent);
+            message.setTo(toList);
+            message.setSubject(subject);
+            message.setSendDate(sentDate);
+            message.setCc(ccList);
+            message.setFrom(from);
+            message.setFlags(flags);
+            message.setId(id);
+            // disconnect
+            folderInbox.close(false);
+            store.close();
+        } catch (NoSuchProviderException ex) {
+            System.out.println("No provider for protocol: " + protocol);
+            ex.printStackTrace();
+        } catch (MessagingException ex) {
+            System.out.println("Could not connect to the message store");
+            ex.printStackTrace();
+        }
+        return message;
+    }
 
 
 //    public JavaMailSender getMailSender(String host, int port, String userName, String password) {
@@ -170,11 +208,11 @@ public class DownloadMailServiceImpl implements DowloadMailService {
         return listAddress;
     }
 
-    private String readAttackment(MimeMultipart multipart){
+    private String readAttackment(MimeMultipart multipart) {
         //Iterate multiparts
-        String result="";
+        String result = "";
         try {
-            for(int k = 0; k < multipart.getCount(); k++){
+            for (int k = 0; k < multipart.getCount(); k++) {
                 BodyPart bodyPart = multipart.getBodyPart(k);
                 InputStream stream =
                         (InputStream) bodyPart.getInputStream();
@@ -182,16 +220,17 @@ public class DownloadMailServiceImpl implements DowloadMailService {
                         new BufferedReader(new InputStreamReader(stream));
 
                 while (bufferedReader.ready()) {
-                    result+= bufferedReader.readLine();
+                    result += bufferedReader.readLine();
                     System.out.println(result);
                 }
                 System.out.println();
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return result;
     }
+
     public String getTextFromMimeMultipart(MimeMultipart mimeMultipart) {
         String result = "";
 

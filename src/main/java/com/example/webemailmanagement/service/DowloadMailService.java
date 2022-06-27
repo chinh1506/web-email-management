@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Properties;
 
 public interface DowloadMailService {
+    public EmailMessage readEmailById(String protocol, String host, String port, String userName, String password, String folder, int id);
     public List<EmailMessage> downloadEmails(String protocol, String host, String port, String userName, String password,String folder);
     public String getTextFromMimeMultipart(MimeMultipart mimeMultipart);
     public void deleteEmail(String protocol, String host, String port, String userName, String password,int i);
