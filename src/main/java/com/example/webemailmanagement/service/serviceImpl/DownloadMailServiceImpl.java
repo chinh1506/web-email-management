@@ -1,20 +1,27 @@
 package com.example.webemailmanagement.service.serviceImpl;
 
+import com.example.webemailmanagement.controller.MailRequest;
 import com.example.webemailmanagement.model.EmailMessage;
 import com.example.webemailmanagement.service.DowloadMailService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
 
 import javax.mail.*;
 import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 
 @Service
 public class DownloadMailServiceImpl implements DowloadMailService {
-
     private Properties getServerProperties(String protocol, String host, String port) {
         Properties properties = new Properties();
         // server setting
@@ -165,26 +172,33 @@ public class DownloadMailServiceImpl implements DowloadMailService {
         return message;
     }
 
+    private JavaMailSender getJavaMailSender(String username, String password) {
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        mailSender.setHost("smtp.office365.com");
+        mailSender.setPort(587);
 
-//    public JavaMailSender getMailSender(String host, int port, String userName, String password) {
-//        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-//        mailSender.setJavaMailProperties(getServerProperties());
-//        mailSender.setHost(host);
-//        mailSender.setPort(port);
-//        mailSender.setUsername(userName);
-//        mailSender.setPassword(password);
-//        return mailSender;
-//    }
+        mailSender.setUsername(username);
+        mailSender.setPassword(password);
+
+        Properties props = mailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.debug", "true");
+        return mailSender;
+    }
 
 
-//    public void sendMail(EmailMessage emailMessage, String userNameFrom) {
-//        SimpleMailMessage message = new SimpleMailMessage();
-//        message.setBcc(();
-//        message.setCc();
-//        message.setFrom(userNameFrom);
-//        message.setTo((String[]) emailMessage.getTo().toArray());
-//        message.setSentDate(new Date());
-//    }
+    public void sendMail(String username, String password,MailRequest mailRequest) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(mailRequest.getTo());
+        message.setFrom(username);
+        message.setSubject(mailRequest.getSubject());
+        message.setSentDate(new Date());
+        message.setText(mailRequest.getContent());
+        JavaMailSender mailSender = getJavaMailSender(username, password);
+        mailSender.send(message);
+    }
 
 
     /**

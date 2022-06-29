@@ -15,20 +15,24 @@ public class MailRestController {
 
     @GetMapping("/mails")
     public List<EmailMessage> getAllMail(@RequestParam String folder)  {
-        List<EmailMessage> mails = mailService.downloadEmails("imap", " imap.gmail.com", "993",
-                "baohuynh9b@gmail.com", "baobao26092001", folder);
+        List<EmailMessage> mails = mailService.downloadEmails("imap", "outlook.office365.com", "993",
+                "19525091.chinh@student.iuh.edu.vn", "chinh123@", folder);
         return mails;
     }
 
     @GetMapping("/mails/{id}")
     public EmailMessage getMail(@PathVariable int id, @RequestParam String folder)  {
-        return mailService.readEmailById("imap", " imap.gmail.com", "993",
-                "baohuynh9b@gmail.com", "baobao26092001", folder, id);
+        return mailService.readEmailById("imap", "outlook.office365.com", "993",
+                "19525091.chinh@student.iuh.edu.vn", "chinh123@", folder, id);
     }
-
+    @PostMapping ("/mails")
+    public void sendEmail(@RequestBody MailRequest mailRequest ){
+        System.out.println(mailRequest);
+        mailService.sendMail("19525091.chinh@student.iuh.edu.vn","chinh123@",mailRequest);
+    }
     @DeleteMapping("/mails/{id}")
     public void deleteMail(@PathVariable int id){
-        mailService.deleteEmail("imap", " imap.gmail.com", "993",
-                "baohuynh9b@gmail.com", "baobao26092001", id);
+        mailService.deleteEmail("imap", "outlook.office365.com", "993",
+                "19525091.chinh@student.iuh.edu.vn", "chinh123@", id);
     }
 }
