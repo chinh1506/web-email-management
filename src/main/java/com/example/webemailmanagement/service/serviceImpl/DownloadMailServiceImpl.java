@@ -37,10 +37,20 @@ public class DownloadMailServiceImpl implements DowloadMailService {
         return properties;
     }
 
-    private Session getSession(String protocol, String host, String port, String userName, String password) {
+    @Override
+    public Boolean getSession(String protocol, String host, String port, String userName, String password) {
         Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
-        return session;
+        Store store = null;
+        try {
+            store = session.getStore(protocol);
+            store.connect(host, userName, password);
+            Folder folder = store.getFolder("INBOX");
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
@@ -110,6 +120,7 @@ public class DownloadMailServiceImpl implements DowloadMailService {
         }
         return emailMessages;
     }
+
     @Override
     public EmailMessage readEmailById(String protocol, String host, String port, String userName, String password, String folder, int id) {
         Properties properties = getServerProperties(protocol, host, port);
@@ -189,7 +200,7 @@ public class DownloadMailServiceImpl implements DowloadMailService {
     }
 
 
-    public void sendMail(String username, String password,MailRequest mailRequest) {
+    public void sendMail(String username, String password, MailRequest mailRequest) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(mailRequest.getTo());
         message.setFrom(username);

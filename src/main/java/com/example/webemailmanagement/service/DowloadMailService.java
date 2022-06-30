@@ -14,4 +14,5 @@ public interface DowloadMailService {
     public String getTextFromMimeMultipart(MimeMultipart mimeMultipart);
     public void deleteEmail(String protocol, String host, String port, String userName, String password,int i);
     public void sendMail(String username, String password, MailRequest mailRequest);
+    public Boolean getSession(String protocol, String host, String port, String userName, String password);
 }
